@@ -57,19 +57,26 @@ pipeline {
                     def containerName = "prod-container"
 
                     sshagent(credentials: ['remote-deploy-ssh']) {
-                        sh """
-                            ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST <<EOF
-                                # Stop and remove the dev container if it exists
-                                docker stop ${containerName} || true
-                                docker rm ${containerName} || true
+    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+        sh """
+            ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST <<EOF
+                # Stop and remove the dev container if it exists
+                docker stop ${containerName} || true
+                docker rm ${containerName} || true
 
-                                echo "Pull the latest Docker image from Docker Hub"
-                                docker pull $REGISTRY/$REPO:${buildNumber}
+                echo "Login to Docker registry"
+                echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin
 
-                                echo "Run the Prod container on port 8082"
-                                docker run -d --name ${containerName} -p ${port}:80 $REGISTRY/$REPO:${buildNumber}
-                        
-                        """
+                echo "Pull the latest Docker image from Docker Hub"
+                docker pull $REGISTRY/$REPO:${buildNumber}
+
+                echo "Run the Prod container on port 8082"
+                docker run -d --name ${containerName} -p ${port}:80 $REGISTRY/$REPO:${buildNumber}
+            EOF
+        """
+                                                                  }
+                                            }
+
                     }
                 }
             }
