@@ -52,23 +52,23 @@ pipeline {
         stage('Deploy to Remote Server') {
             steps {
                 script {
-                    def buildNumber = "${env.BUILD_NUMBER}"
-                    def port = "8082"
-                    def containerName = "dev-container"
-
-                    sshagent(credentials: ['remote-deploy-ssh']) {
+                    // Use Jenkins credentials to securely log in to the private Docker registry
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                         sh """
                             ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST <<EOF
                                 # Stop and remove the dev container if it exists
                                 docker stop ${containerName} || true
                                 docker rm ${containerName} || true
 
+                                echo "Login to Docker registry"
+                                echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin
+
                                 echo "Pull the latest Docker image from Docker Hub"
                                 docker pull $REGISTRY/$REPO:${buildNumber}
 
                                 echo "Run the Prod container on port 8082"
                                 docker run -d --name ${containerName} -p ${port}:80 $REGISTRY/$REPO:${buildNumber}
-                        
+                        EOF
                         """
                     }
                 }
