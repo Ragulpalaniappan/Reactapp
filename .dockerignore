@@ -1,0 +1,8 @@
+# Ignore Jenkins pipeline file
+JenkinsfileDev
+
+# Ignore Docker-related files
+Dockerfile
+Dockerfile.*
+
+
