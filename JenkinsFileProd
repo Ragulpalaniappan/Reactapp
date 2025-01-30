@@ -1,0 +1,83 @@
+pipeline {
+    agent any
+    environment {
+        REGISTRY = "docker.io"  
+        REPO = "ragulram1115/capstone_application_prod"  
+        REMOTE_HOST = "54.224.172.129"  
+        REMOTE_USER = "ubuntu"  
+    }
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    // Clone the Dev branch
+                    git branch: 'dev', url: 'https://github.com/Ragulpalaniappan/React_Deployment.git'
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Use the Jenkins build number as the tag
+                    def buildNumber = "${env.BUILD_NUMBER}"
+                    echo "Build Number: ${buildNumber}"
+
+                    // Build the Docker image with the build number as the tag
+                    docker.build("react_app:${buildNumber}")
+                }
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                        sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
+                    }
+
+                    // Use the Jenkins build number as the tag
+                   def buildNumber = "${env.BUILD_NUMBER}"
+                   def imageName = "react_app:${buildNumber}"
+                   def remoteImage = "$REGISTRY/$REPO:${buildNumber}"
+   
+                   // Tag and push the image to Docker Hub
+                   sh "docker tag ${imageName} ${remoteImage}"
+                   sh "docker push ${remoteImage}"
+
+                   // Remove the local Docker image
+                   echo "Removing local Docker image: ${imageName} and ${remoteImage}"
+                   sh "docker rmi ${imageName} ${remoteImage}"
+                  }
+            }
+        }
+        stage('Deploy to Remote Server') {
+            steps {
+                script {
+                    def buildNumber = "${env.BUILD_NUMBER}"
+                    def port = "8082"
+                    def containerName = "dev-container"
+
+                    sshagent(credentials: ['remote-deploy-ssh']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST <<EOF
+                                # Stop and remove the dev container if it exists
+                                docker stop ${containerName} || true
+                                docker rm ${containerName} || true
+
+                                echo "Pull the latest Docker image from Docker Hub"
+                                docker pull $REGISTRY/$REPO:${buildNumber}
+
+                                echo "Run the Prod container on port 8082"
+                                docker run -d --name ${containerName} -p ${port}:80 $REGISTRY/$REPO:${buildNumber}
+                        
+                        """
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
