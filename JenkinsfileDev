@@ -22,9 +22,6 @@ pipeline {
                     def buildNumber = "${env.BUILD_NUMBER}"
                     echo "Build Number: ${buildNumber}"
 
-                    echo "Clearing all existing Docker images in the jenkins Node"
-                    sh "docker rmi $(docker images -q) -f"
-
                     // Build the Docker image with the build number as the tag
                     docker.build("react_app:${buildNumber}")
                 }
