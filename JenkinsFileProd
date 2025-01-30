@@ -52,6 +52,9 @@ pipeline {
         stage('Deploy to Remote Server') {
             steps {
                 script {
+                    def buildNumber = "${env.BUILD_NUMBER}"
+                    def port = "8082"
+                    def containerName = "prod-container"
                     // Use Jenkins credentials to securely log in to the private Docker registry
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                         sh """
