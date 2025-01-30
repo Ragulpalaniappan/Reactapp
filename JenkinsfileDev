@@ -1,13 +1,9 @@
 pipeline {
     agent any
-    triggers {
-        // Trigger when a change is pushed to the Dev branch
-        githubPush()
-    }
     environment {
         REGISTRY = "docker.io"  
         DEV_REPO = "ragulram1115/capstone_application_dev"  
-        REMOTE_HOST = "35.168.16.235"  
+        REMOTE_HOST = "54.224.172.129"  
         REMOTE_USER = "ubuntu"  
     }
     stages {
